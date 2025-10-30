@@ -34,7 +34,7 @@ class CustomSnackbar {
     final overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
         top: 60,
-        right: 16,
+        right: 4,
         child: Material(
           color: Colors.transparent,
           child: _SnackbarContainer(
@@ -121,7 +121,7 @@ class _SnackbarContainerState extends State<_SnackbarContainer>
               widget.message,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),

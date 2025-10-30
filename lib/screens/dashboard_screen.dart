@@ -80,7 +80,7 @@ class _Header extends StatelessWidget {
                 children: [
                   Text('WELCOME BACK', style: theme.textTheme.labelSmall?.copyWith(color: theme.hintColor)),
                   const SizedBox(height: 4),
-                  Text(greetingName.toUpperCase(), style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+                  Text("ADMIN", style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
                 ],
               ),
             ),

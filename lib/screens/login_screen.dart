@@ -39,6 +39,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _emailController.text.trim(),
         _passwordController.text,
       );
+      if (mounted) {
+        CustomSnackbar.show(context, 'Đăng nhập thành công', type: SnackType.success);
+      }
     } catch (e) {
       CustomSnackbar.show(context, 'Thông tin đăng nhập không chính xác!',type: SnackType.error);
     } finally {

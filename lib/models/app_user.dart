@@ -11,6 +11,7 @@ class AppUser {
   final String id;
   final String username;
   final String email;
+  // Stores base64 string of avatar in the existing field name for compatibility
   final String? avatarUrl;
 
   factory AppUser.fromJson(Map<String, dynamic> json, String id) {
@@ -18,6 +19,7 @@ class AppUser {
       id: id,
       username: json['username'] as String? ?? (json['name'] as String? ?? ''),
       email: json['email'] as String? ?? '',
+  
       avatarUrl: json['avatarUrl'] as String?,
     );
   }

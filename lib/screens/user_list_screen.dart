@@ -5,6 +5,7 @@ import '../models/app_user.dart';
 import '../providers/user_provider.dart';
 import '../widgets/user_tile.dart';
 import 'user_edit_screen.dart';
+import '../widgets/custom_snackbar.dart';
 
 class UserListScreen extends ConsumerWidget {
   const UserListScreen({super.key});
@@ -63,6 +64,9 @@ class UserListScreen extends ConsumerWidget {
                             false;
                         if (ok) {
                           await ref.read(usersControllerProvider.notifier).deleteUser(user.id);
+                          if (context.mounted) {
+                            CustomSnackbar.show(context, 'Đã xóa ${user.username}', type: SnackType.success);
+                          }
                         }
                       },
                     );

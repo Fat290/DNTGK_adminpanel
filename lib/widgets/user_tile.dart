@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-import 'dart:io' show File;
+import 'dart:convert';
 
 import '../models/app_user.dart';
 
@@ -20,7 +19,12 @@ class UserTile extends StatelessWidget {
               ? null
               : (user.avatarUrl!.startsWith('http')
                   ? NetworkImage(user.avatarUrl!)
-                  : (!kIsWeb ? FileImage(File(user.avatarUrl!)) as ImageProvider : null)),
+                  : ((){
+                      try {
+                        final bytes = base64Decode(user.avatarUrl!);
+                        return MemoryImage(bytes);
+                      } catch (_) { return null; }
+                    })()),
           child: user.avatarUrl == null ? const Icon(Icons.person) : null,
         ),
         title: Text(user.username),

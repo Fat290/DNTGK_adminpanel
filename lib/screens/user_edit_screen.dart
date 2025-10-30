@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:convert';
 import 'dart:io' show File;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/app_user.dart';
 import '../providers/user_provider.dart';
 import '../widgets/custom_snackbar.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserEditScreen extends ConsumerStatefulWidget {
   const UserEditScreen({super.key, this.existing});
@@ -22,7 +24,7 @@ class _UserEditScreenState extends ConsumerState<UserEditScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   Uint8List? _avatarBytes;
-  String? _avatarLocalPath;
+  String? _avatarBase64;
   bool _saving = false;
 
   @override
@@ -32,7 +34,16 @@ class _UserEditScreenState extends ConsumerState<UserEditScreen> {
     if (ex != null) {
       _nameController.text = ex.username;
       _emailController.text = ex.email;
-      _avatarLocalPath = ex.avatarUrl;
+      _avatarBase64 = ex.avatarUrl;
+      // Prefill password from Firestore if present
+      FirebaseFirestore.instance.collection('users').doc(ex.id).get().then((doc){
+        final data = doc.data();
+        final pwd = data != null ? (data['password'] as String?) : null;
+        if (pwd != null) {
+          _passwordController.text = pwd;
+          setState(() {});
+        }
+      });
     }
   }
 
@@ -76,20 +87,31 @@ class _UserEditScreenState extends ConsumerState<UserEditScreen> {
         await ref.read(firebaseServiceProvider).createUser({
           'username': username,
           'email': email,
-          'avatarUrl': _avatarLocalPath,
+          'avatarUrl': _avatarBase64,
           'password': _passwordController.text.trim(),
         });
         CustomSnackbar.show(context, 'Tạo user thành công', type: SnackType.success);
         _formKey.currentState!.reset();
+        _nameController.clear();
+        _emailController.clear();
+        _passwordController.clear();
+        setState(() {
+          _avatarBytes = null;
+          _avatarBase64 = null;
+        });
       } else {
-        await ref.read(usersControllerProvider.notifier).updateUser(
-          widget.existing!.id,
-          {
-            'username': username,
-            'email': email,
-            'avatarUrl': _avatarLocalPath,
-          },
-        );
+        final updateData = <String, dynamic>{
+          'username': username,
+          'email': email,
+        };
+        final newPassword = _passwordController.text.trim();
+        if (newPassword.isNotEmpty) {
+          updateData['password'] = newPassword;
+        }
+        if (_avatarBase64 != null) {
+          updateData['avatarUrl'] = _avatarBase64;
+        }
+        await ref.read(usersControllerProvider.notifier).updateUser(widget.existing!.id, updateData);
         CustomSnackbar.show(context, 'Cập nhật user thành công', type: SnackType.success);
       }
     } catch (e) {
@@ -149,9 +171,13 @@ class _UserEditScreenState extends ConsumerState<UserEditScreen> {
                             );
                             if (picked != null) {
                               final bytes = await picked.readAsBytes();
+                              if (bytes.lengthInBytes > 900 * 1024) {
+                                CustomSnackbar.show(context, 'Ảnh quá lớn (>900KB). Vui lòng chọn ảnh nhỏ hơn.', type: SnackType.error);
+                                return;
+                              }
                               setState(() {
                                 _avatarBytes = bytes;
-                                _avatarLocalPath = picked.path;
+                                _avatarBase64 = base64Encode(bytes);
                               });
                             }
                           },
@@ -165,17 +191,18 @@ class _UserEditScreenState extends ConsumerState<UserEditScreen> {
                                     : Colors.grey[200],
                                 backgroundImage: _avatarBytes != null
                                     ? MemoryImage(_avatarBytes!)
-                                    : (_avatarLocalPath != null &&
-                                    _avatarLocalPath!.isNotEmpty)
-                                    ? (!kIsWeb
-                                    ? FileImage(File(_avatarLocalPath!))
-                                    : null)
                                     : (widget.existing?.avatarUrl != null
-                                    ? NetworkImage(widget.existing!.avatarUrl!)
-                                    : null),
+                                        ? (widget.existing!.avatarUrl!.startsWith('http')
+                                            ? NetworkImage(widget.existing!.avatarUrl!)
+                                            : ((){
+                                                try {
+                                                  final bytes = base64Decode(widget.existing!.avatarUrl!);
+                                                  return MemoryImage(bytes);
+                                                } catch (_) { return null; }
+                                              })())
+                                        : null),
                                 child: (_avatarBytes == null &&
-                                    (_avatarLocalPath == null ||
-                                        _avatarLocalPath!.isEmpty))
+                                    (widget.existing?.avatarUrl == null || widget.existing!.avatarUrl!.isEmpty))
                                     ? Icon(Icons.person_outline,
                                     size: 48, color: Colors.grey[400])
                                     : null,
@@ -250,7 +277,7 @@ class _UserEditScreenState extends ConsumerState<UserEditScreen> {
                           v == null || v.isEmpty ? 'Nhập email' : null,
                         ),
               
-                        if (widget.existing == null) ...[
+
                           const SizedBox(height: 16),
                           TextFormField(
                             controller: _passwordController,
@@ -278,7 +305,7 @@ class _UserEditScreenState extends ConsumerState<UserEditScreen> {
                                 ? 'Mật khẩu phải ít nhất 6 ký tự'
                                 : null,
                           ),
-                        ],
+
               
                         const SizedBox(height: 28),
               
